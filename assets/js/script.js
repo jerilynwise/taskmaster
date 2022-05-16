@@ -13,6 +13,9 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  //check due date
+  auditTask(taskLi);
+
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
 };
@@ -32,7 +35,6 @@ var loadTasks = function() {
 
   // loop over object properties
   $.each(tasks, function(list, arr) {
-    console.log(list, arr);
     // then loop over sub-array
     arr.forEach(function(task) {
       createTask(task.text, task.date, list);
@@ -52,16 +54,12 @@ $(".card .list-group").sortable({
   tolerance: "pointer",
   helper: "clone",
   activate: function(event, ui) {
-    console.log(ui);
   },
   deactivate: function(event, ui) {
-    console.log(ui);
   },
   over: function(event) {
-    console.log(event);
   },
   out: function(event) {
-    console.log(event);
   },
   update: function() {
     var tempArr = [];
@@ -107,11 +105,14 @@ $("#trash").droppable({
 
   },
   over: function(event, ui) {
-    console.log(ui);
   },
   out: function(event, ui) {
-    console.log(ui);
   }
+});
+
+//make a calendar to choose date from
+$("#modalDueDate").datepicker({
+  minDate: 1
 });
 
 
@@ -205,9 +206,40 @@ $(".list-group").on("click", "span", function() {
     .val(date);
   $(this).replaceWith(dateInput);
 
+  //enable calendar to pop up with jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      $(this).trigger("change");
+    }
+  });
+
   // automatically bring up the calendar
   dateInput.trigger("focus");
 });
+
+//color tones to determine past due or due soon
+var auditTask = function(taskEl) {
+  //get date from task element
+  var date = $(taskEl)
+  .find("span")
+  .text()
+  .trim();
+
+  //convert to moment objec at 5pm
+  var time = moment(date, "L").set("hour", 17);
+
+  //remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  //aaply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
 
 // value of due date was changed
 $(".list-group").on("change", "input[type='text']", function() {
@@ -231,6 +263,9 @@ $(".list-group").on("change", "input[type='text']", function() {
     .addClass("badge badge-primary badge-pill")
     .text(date);
     $(this).replaceWith(taskSpan);
+
+    //pass taks's <li> element into audit to check new due date
+    auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 // remove all tasks
@@ -239,7 +274,7 @@ $("#remove-tasks").on("click", function() {
     tasks[key].length = 0;
     $("#list-" + key).empty();
   }
-  console.log(tasks);
+
   saveTasks();
 });
 
